@@ -89,9 +89,9 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
                 .unwrap(),
         ));
         let full_path = std::fs::canonicalize(&filename).unwrap();
-        println!("Logging to {}", full_path.to_str().unwrap());
+        // println!("Logging to {}", full_path.to_str().unwrap());
     } else {
-        println!("Logging to a temp file");
+        // println!("Logging to a temp file");
         // create a temp file using the std library
         let temp_dir = env::temp_dir();
         // append "logger" to the temp dir so it's like this:
@@ -226,11 +226,11 @@ macro_rules! log {
 ///
 /// # Examples
 /// ```
-/// use woody::debug;
-/// debug!("Hello, world!");
+/// use woody::log_debug;
+/// log_debug!("Hello, world!");
 /// ```
 #[macro_export]
-macro_rules! debug {
+macro_rules! log_debug {
     ($message:expr) => {
         $crate::log!($crate::LogLevel::Debug, $message);
     };
@@ -244,11 +244,11 @@ macro_rules! debug {
 /// Logs an info message.
 /// # Examples
 /// ```
-/// use woody::info;
-/// info!("Hello, world!");
+/// use woody::log_info;
+/// log_info!("Hello, world!");
 /// ```
 #[macro_export]
-macro_rules! info {
+macro_rules! log_info {
     ($message:expr) => {
         $crate::log!($crate::LogLevel::Info, $message);
     };
@@ -262,11 +262,11 @@ macro_rules! info {
 /// Logs a warning message.
 /// # Examples
 /// ```
-/// use woody::warning;
-/// warning!("Hello, world!");
+/// use woody::log_warning;
+/// log_warning!("Hello, world!");
 /// ```
 #[macro_export]
-macro_rules! warning {
+macro_rules! log_warning {
     ($message:expr) => {
         $crate::log!($crate::LogLevel::Warning, $message);
     };
@@ -280,11 +280,11 @@ macro_rules! warning {
 /// Logs an error message.
 /// # Examples
 /// ```
-/// use woody::error;
-/// error!("Hello, world!");
+/// use woody::log_error;
+/// log_error!("Hello, world!");
 /// ```
 #[macro_export]
-macro_rules! error {
+macro_rules! log_error {
     ($message:expr) => {
         $crate::log!($crate::LogLevel::Error, $message);
     };
@@ -298,11 +298,11 @@ macro_rules! error {
 /// Logs a trace message.
 /// # Examples
 /// ```
-/// use woody::trace;
-/// trace!("Hello, world!");
+/// use woody::log_trace;
+/// log_trace!("Hello, world!");
 /// ```
 #[macro_export]
-macro_rules! trace {
+macro_rules! log_trace {
     ($message:expr) => {
         $crate::log!($crate::LogLevel::Trace, $message);
     };
@@ -316,11 +316,11 @@ macro_rules! trace {
 /// Logs a text message.
 /// # Examples
 /// ```
-/// use woody::text;
-/// text!("Hello, world!");
+/// use woody::log_text;
+/// log_text!("Hello, world!");
 /// ```
 #[macro_export]
-macro_rules! text {
+macro_rules! log_text {
     ($message:expr) => {
         $crate::log!($crate::LogLevel::Off, $message);
     };
@@ -467,7 +467,7 @@ mod tests {
     fn test_log_info() {
         let f = function!();
         let s = format!("Hello, {f}!");
-        info!(s);
+        log_info!(s);
         check_log_file_contains(s);
     }
 
@@ -475,7 +475,7 @@ mod tests {
     fn test_log_debug() {
         let f = function!();
         let s = format!("Hello, {f}!");
-        debug!(s);
+        log_debug!(s);
         check_log_file_contains(s);
     }
 
@@ -483,7 +483,7 @@ mod tests {
     fn test_log_warning() {
         let f = function!();
         let s = format!("Hello, {f}!");
-        warning!(s);
+        log_warning!(s);
         check_log_file_contains(s);
     }
 
@@ -491,7 +491,7 @@ mod tests {
     fn test_log_error() {
         let f = function!();
         let s = format!("Hello, {f}!");
-        error!(s);
+        log_error!(s);
         check_log_file_contains(s);
     }
 
@@ -499,7 +499,7 @@ mod tests {
     fn test_log_trace() {
         let f = function!();
         let s = format!("Hello, {f}!");
-        trace!(s);
+        log_trace!(s);
         check_log_file_contains(s);
     }
 
@@ -507,7 +507,7 @@ mod tests {
     fn test_log_text() {
         let f = function!();
         let s = format!("Hello, {f}!");
-        text!(s);
+        log_text!(s);
         check_log_file_contains(s);
     }
 
