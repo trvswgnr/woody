@@ -1,10 +1,12 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
+///! A (really) very simple logger that can be used globally in any project.
+///!
+///! Logs the current time, the log level, the thread name, the file and line number, and the message.
+///! Log messages are written to a file (`debug.log` by default).
 use lazy_static::lazy_static;
 use std::{
-    any::Any,
-    collections::HashMap,
     env,
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
@@ -15,24 +17,6 @@ use std::{
 lazy_static! {
     static ref INSTANCE: Arc<Mutex<Option<Logger>>> = Arc::new(Mutex::new(None));
     static ref FILENAME: Arc<Mutex<String>> = Arc::new(Mutex::new("debug.log".to_string()));
-}
-
-// macro that creates the equivelant of a dictionary in python
-/*
-Usage:
-let mut map = dict!{
-    "key1": "value1",
-    "key2": "value2",
-};
-allow any types for the key and value
-enforce the trailing comma
-*/
-macro_rules! dict {
-    ($($key:expr => $value:expr),* $(,)+) => {{
-        let mut map = std::collections::HashMap::new();
-        $(map.insert($key, $value);)*
-        map
-    }};
 }
 
 #[allow(dead_code)]
@@ -67,7 +51,7 @@ pub struct Logger {
     filename: String,
 }
 
-/// Generate temp file name
+/// Generates a temp file name
 ///
 /// Returns a string that looks like this:
 /// `temp-8444741687653642537.log`
@@ -81,11 +65,12 @@ fn generate_temp_file_name() -> String {
     let suffix = ".log";
     // make sure it's exactly 32 characters long
     let len = 32 - prefix.len() - suffix.len();
-    let hash = format!("{:0>len$}", hash, len = len);
+    let hash = format!("{hash:0>len$}");
 
-    format!("temp-{}.log", hash)
+    format!("temp-{hash}.log")
 }
 
+/// Gets the file and filename to use for logging.
 fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
     let filename: String;
     let file: Arc<Mutex<File>>;
@@ -95,7 +80,7 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
             OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(filename.to_string())
+                .open(&filename)
                 .unwrap(),
         ));
     } else {
@@ -165,13 +150,14 @@ impl Logger {
 
         if let Some(writer) = writer {
             writer.write_all(output.as_bytes()).unwrap();
-            return ();
+            return;
         }
 
         let mut file = self.file.lock().unwrap();
         file.write_all(output.as_bytes()).unwrap();
     }
 
+    /// Gets the instance of the logger. If the logger is not created, it will create it.
     pub fn get_instance() -> Logger {
         // Check if the instance is already created.
         let current_global_instance = INSTANCE.clone();
@@ -188,6 +174,7 @@ impl Logger {
     }
 }
 
+/// The log info struct. This is used to log a message.
 #[derive(Clone)]
 pub struct LogInfo {
     pub level: LogLevel,
@@ -197,6 +184,7 @@ pub struct LogInfo {
     pub thread: Option<String>,
 }
 
+/// The log macro. Used in other macros.
 #[macro_export]
 macro_rules! log {
     ($level:expr, $message:expr) => {
@@ -214,6 +202,7 @@ macro_rules! log {
     };
 }
 
+/// Logs a debug message.
 #[macro_export]
 macro_rules! debug {
     ($message:expr) => {
@@ -226,6 +215,7 @@ macro_rules! debug {
     };
 }
 
+/// Logs an info message.
 #[macro_export]
 macro_rules! info {
     ($message:expr) => {
@@ -238,6 +228,7 @@ macro_rules! info {
     };
 }
 
+/// Logs a warning message.
 #[macro_export]
 macro_rules! warning {
     ($message:expr) => {
@@ -250,6 +241,7 @@ macro_rules! warning {
     };
 }
 
+/// Logs an error message.
 #[macro_export]
 macro_rules! error {
     ($message:expr) => {
@@ -262,6 +254,7 @@ macro_rules! error {
     };
 }
 
+/// Logs a trace message.
 #[macro_export]
 macro_rules! trace {
     ($message:expr) => {
@@ -274,6 +267,7 @@ macro_rules! trace {
     };
 }
 
+/// Logs a text message.
 #[macro_export]
 macro_rules! text {
     ($message:expr) => {
@@ -286,6 +280,7 @@ macro_rules! text {
     };
 }
 
+/// Gets the name of the current function.
 macro_rules! function {
     () => {{
         fn f() {}
@@ -346,8 +341,7 @@ mod tests {
 
         assert!(
             contents.contains(info.message.as_str()),
-            "Contents of log does not contain 'Hello, world!'\nContents: {}",
-            contents
+            "Contents of log does not contain 'Hello, world!'\nContents: {contents}"
         );
     }
 
@@ -360,10 +354,7 @@ mod tests {
         file.read_to_string(&mut contents).unwrap();
         assert!(
             contents.contains(s.as_str()),
-            "Contents of log does not contain '{}'\nContents: {}\nLogger: {:?}",
-            s,
-            contents,
-            logger
+            "Contents of log does not contain '{s}'\nContents: {contents}\nLogger: {logger:?}"
         );
     }
 
@@ -378,11 +369,8 @@ mod tests {
                 Some(id) => format!("{}-{}", thread.unwrap(), id),
                 None => thread.unwrap().to_string(),
             };
-            let id = match id {
-                Some(id) => id,
-                None => 0,
-            };
-            let message = format!("Hello, world! {}", id);
+            let id = id.unwrap_or(0);
+            let message = format!("Hello, world! {id}");
             let info = LogInfo {
                 level: LogLevel::Info,
                 message,
@@ -416,7 +404,7 @@ mod tests {
         file.read_to_string(&mut contents).unwrap();
 
         for i in 0..10 {
-            let message = format!("Hello, world! {}", i);
+            let message = format!("Hello, world! {i}");
             check_log_file_contains(message);
         }
     }
@@ -424,7 +412,7 @@ mod tests {
     #[test]
     fn test_log_info() {
         let f = function!();
-        let s = format!("Hello, {}!", f);
+        let s = format!("Hello, {f}!");
         info!(s);
         check_log_file_contains(s);
     }
@@ -432,7 +420,7 @@ mod tests {
     #[test]
     fn test_log_debug() {
         let f = function!();
-        let s = format!("Hello, {}!", f);
+        let s = format!("Hello, {f}!");
         debug!(s);
         check_log_file_contains(s);
     }
@@ -440,7 +428,7 @@ mod tests {
     #[test]
     fn test_log_warning() {
         let f = function!();
-        let s = format!("Hello, {}!", f);
+        let s = format!("Hello, {f}!");
         warning!(s);
         check_log_file_contains(s);
     }
@@ -448,7 +436,7 @@ mod tests {
     #[test]
     fn test_log_error() {
         let f = function!();
-        let s = format!("Hello, {}!", f);
+        let s = format!("Hello, {f}!");
         error!(s);
         check_log_file_contains(s);
     }
@@ -456,7 +444,7 @@ mod tests {
     #[test]
     fn test_log_trace() {
         let f = function!();
-        let s = format!("Hello, {}!", f);
+        let s = format!("Hello, {f}!");
         trace!(s);
         check_log_file_contains(s);
     }
@@ -464,7 +452,7 @@ mod tests {
     #[test]
     fn test_log_text() {
         let f = function!();
-        let s = format!("Hello, {}!", f);
+        let s = format!("Hello, {f}!");
         text!(s);
         check_log_file_contains(s);
     }
@@ -484,251 +472,7 @@ mod tests {
         // make sure the filename starts with "temp-"
         assert!(
             filename.starts_with("temp-"),
-            "Filename does not start with 'temp-': {}",
-            filename
+            "Filename does not start with 'temp-': {filename}"
         );
     }
-
-    #[test]
-    fn test_dict_macro() {
-        let dict1 = dict! {
-            "key1" => "value1",
-            "key2" => "value2",
-        };
-
-        let dict2 = dict! {
-            "key1" => "value1",
-            "key2" => "value3",
-        };
-
-        let dict = dict! {
-            "key1" => dict1.clone(),
-            "key2" => dict2.clone(),
-            "key3" => dict2.clone(),
-        };
-
-        assert_eq!(dict1.get("key1"), Some(&"value1"));
-        assert_eq!(dict.get("key1"), Some(&dict2));
-    }
-}
-
-/// Struct similar to a HashMap, but can hold mixed types for values.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Dict {
-    map: HashMap<String, Value>,
-}
-
-impl Dict {
-    /// Create a new Dict.
-    pub fn new() -> Self {
-        Dict {
-            map: HashMap::new(),
-        }
-    }
-
-    /// Insert a new key-value pair into the Dict.
-    pub fn insert(&mut self, key: &str, value: Value) {
-        self.map.insert(key.to_string(), value);
-    }
-
-    /// Get the value associated with the given key.
-    pub fn get(&self, key: &str) -> Option<&Value> {
-        self.map.get(key)
-    }
-
-    /// Get the value associated with the given key, and convert it to the given type.
-    pub fn get_as<T: FromValue>(&self, key: &str) -> Option<T> {
-        match self.get(key) {
-            Some(value) => Some(T::from_value(value)),
-            None => None,
-        }
-    }
-
-    /// Get the value associated with the given key, and convert it to the given type.
-    /// If the value is not found, return the default value.
-    pub fn get_as_or<T: FromValue>(&self, key: &str, default: T) -> T {
-        match self.get(key) {
-            Some(value) => T::from_value(value),
-            None => default,
-        }
-    }
-
-    /// Get the value associated with the given key, and convert it to the given type.
-    /// If the value is not found, return the default value.
-    pub fn get_as_or_else<T: FromValue, F: FnOnce() -> T>(&self, key: &str, default: F) -> T {
-        match self.get(key) {
-            Some(value) => T::from_value(value),
-            None => default(),
-        }
-    }
-
-    /// Get the value associated with the given key, and convert it to the given type.
-    /// If the value is not found, return the default value.
-    pub fn get_as_or_default<T: FromValue + Default>(&self, key: &str) -> T {
-        match self.get(key) {
-            Some(value) => T::from_value(value),
-            None => T::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Value {
-    value: ValueEnum,
-}
-
-impl Value {
-    fn new(value: ValueEnum) -> Self {
-        Value { value }
-    }
-
-    fn as_str(&self) -> Option<&str> {
-        match &self.value {
-            ValueEnum::String(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    fn as_string(&self) -> Option<String> {
-        match &self.value {
-            ValueEnum::String(s) => Some(s.clone()),
-            _ => None,
-        }
-    }
-
-    fn as_bool(&self) -> Option<bool> {
-        match &self.value {
-            ValueEnum::Bool(b) => Some(*b),
-            _ => None,
-        }
-    }
-
-    fn as_i64(&self) -> Option<i64> {
-        match &self.value {
-            ValueEnum::I64(i) => Some(*i),
-            _ => None,
-        }
-    }
-
-    fn as_u64(&self) -> Option<u64> {
-        match &self.value {
-            ValueEnum::U64(u) => Some(*u),
-            _ => None,
-        }
-    }
-
-    fn as_f64(&self) -> Option<f64> {
-        match &self.value {
-            ValueEnum::F64(f) => Some(*f),
-            _ => None,
-        }
-    }
-
-    fn as_dict(&self) -> Option<&Dict> {
-        match &self.value {
-            ValueEnum::Dict(d) => Some(d),
-            _ => None,
-        }
-    }
-
-    fn as_dict_mut(&mut self) -> Option<&mut Dict> {
-        match &mut self.value {
-            ValueEnum::Dict(d) => Some(d),
-            _ => None,
-        }
-    }
-
-    fn as_array(&self) -> Option<&Vec<Value>> {
-        match &self.value {
-            ValueEnum::Array(a) => Some(a),
-            _ => None,
-        }
-    }
-
-    fn as_array_mut(&mut self) -> Option<&mut Vec<Value>> {
-        match &mut self.value {
-            ValueEnum::Array(a) => Some(a),
-            _ => None,
-        }
-    }
-}
-
-pub trait FromValue {
-    fn from_value(value: &Value) -> Self;
-}
-
-trait IntoValue {
-    fn into_value(self) -> Value;
-}
-
-impl FromValue for String {
-    fn from_value(value: &Value) -> Self {
-        match &value.value {
-            ValueEnum::String(s) => s.clone(),
-            _ => panic!("Cannot convert {:?} to String", value),
-        }
-    }
-}
-
-impl IntoValue for String {
-    fn into_value(self) -> Value {
-        Value::new(ValueEnum::String(self))
-    }
-}
-
-impl IntoValue for Vec<String> {
-    fn into_value(self) -> Value {
-        Value::new(ValueEnum::Array(
-            self.into_iter().map(|s| s.into_value()).collect(),
-        ))
-    }
-}
-
-impl FromValue for Vec<String> {
-    fn from_value(value: &Value) -> Self {
-        match &value.value {
-            ValueEnum::Array(a) => a
-                .iter()
-                .map(|v| match &v.value {
-                    ValueEnum::String(s) => s.clone(),
-                    _ => panic!("Cannot convert {:?} to String", v),
-                })
-                .collect(),
-            _ => panic!("Cannot convert {:?} to Vec<String>", value),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum ValueEnum {
-    String(String),
-    Bool(bool),
-    I64(i64),
-    U64(u64),
-    F64(f64),
-    Dict(Dict),
-    Array(Vec<Value>),
-}
-
-fn get_dict() -> Dict {
-    let key1 = String::from("key1");
-    let val1 = String::from("value1");
-    let key2 = String::from("key2");
-    let val2 = vec![String::from("value2")];
-
-    let mut dict1 = Dict::new();
-    dict1.insert(&key1, val1.into_value());
-    dict1.insert(&key2, val2.into_value());
-
-    dict1
-}
-
-#[test]
-fn test_get_as() {
-    let dict1 = get_dict();
-    let val1 = dict1.get_as::<String>("key1").unwrap();
-    assert_eq!(val1, "value1");
-
-    let val2 = dict1.get_as::<String>("key2").unwrap();
-    assert_eq!(val2, "value2");
 }
