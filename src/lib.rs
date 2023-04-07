@@ -81,19 +81,17 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
     let file: Arc<Mutex<File>>;
     if !cfg!(test) {
         filename = FILENAME.lock().unwrap().clone();
-        // get the root directory of the crate this is being used in
-        let root_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-        // append the filename to the root dir so it's like this:
-        // /path/to/crate/debug.log
-        let filename = format!("{root_dir}/{filename}");
         file = Arc::new(Mutex::new(
             OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(filename)
+                .open(&filename)
                 .unwrap(),
         ));
+        let full_path = std::fs::canonicalize(&filename).unwrap();
+        println!("Logging to {}", full_path.to_str().unwrap());
     } else {
+        println!("Logging to a temp file");
         // create a temp file using the std library
         let temp_dir = env::temp_dir();
         // append "logger" to the temp dir so it's like this:
