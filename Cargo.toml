@@ -4,28 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lazy_static = "1.4"
-chrono = "0.4"
+lazy_static = "1.4.0"
+chrono = "0.4.24"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "rt"] }
 serial_test = "0.10"
-
-[profile.release]
-strip = true
-opt-level = "z"
-lto = true
-codegen-units = 1
-panic = "abort"
-
-[target.x86_64-apple-darwin]
-rustflags = [
-  "-C", "link-arg=-undefined",
-  "-C", "link-arg=dynamic_lookup",
-]
-
-[target.aarch64-apple-darwin]
-rustflags = [
-  "-C", "link-arg=-undefined",
-  "-C", "link-arg=dynamic_lookup",
-]
