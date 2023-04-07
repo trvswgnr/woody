@@ -1,6 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_macros)]
-
 ///! A (really) very simple logger that can be used globally in any project.
 ///!
 ///! Logs the current time, the log level, the thread name, the file and line number, and the message.
@@ -19,14 +16,21 @@ lazy_static! {
     static ref FILENAME: Arc<Mutex<String>> = Arc::new(Mutex::new("debug.log".to_string()));
 }
 
+/// Determines the log level of a message.
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LogLevel {
+    /// Error level.
     Error,
+    /// Warning level.
     Warning,
+    /// Info level.
     Info,
+    /// Debug level.
     Debug,
+    /// Trace level.
     Trace,
+    /// Off level.
     Off,
 }
 
@@ -45,6 +49,7 @@ impl std::fmt::Display for LogLevel {
 
 /// The logger struct. A singleton that can only be created once.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct Logger {
     file: Arc<Mutex<File>>,
     level: LogLevel,
@@ -177,14 +182,26 @@ impl Logger {
 /// The log info struct. This is used to log a message.
 #[derive(Clone)]
 pub struct LogInfo {
+    /// The log level.
     pub level: LogLevel,
+    /// The message to log.
     pub message: String,
+    /// The filepath of the file that called the log macro.
     pub filepath: &'static str,
+    /// The line number of the file that called the log macro.
     pub line_number: u32,
+    /// The thread that called the log macro.
     pub thread: Option<String>,
 }
 
 /// The log macro. Used in other macros.
+///
+/// # Examples
+/// ```
+/// use woody::log;
+/// use woody::LogLevel;
+/// log!(LogLevel::Info, "Hello, world!");
+/// ```
 #[macro_export]
 macro_rules! log {
     ($level:expr, $message:expr) => {
@@ -203,6 +220,12 @@ macro_rules! log {
 }
 
 /// Logs a debug message.
+///
+/// # Examples
+/// ```
+/// use woody::debug;
+/// debug!("Hello, world!");
+/// ```
 #[macro_export]
 macro_rules! debug {
     ($message:expr) => {
@@ -216,6 +239,11 @@ macro_rules! debug {
 }
 
 /// Logs an info message.
+/// # Examples
+/// ```
+/// use woody::info;
+/// info!("Hello, world!");
+/// ```
 #[macro_export]
 macro_rules! info {
     ($message:expr) => {
@@ -229,6 +257,11 @@ macro_rules! info {
 }
 
 /// Logs a warning message.
+/// # Examples
+/// ```
+/// use woody::warning;
+/// warning!("Hello, world!");
+/// ```
 #[macro_export]
 macro_rules! warning {
     ($message:expr) => {
@@ -242,6 +275,11 @@ macro_rules! warning {
 }
 
 /// Logs an error message.
+/// # Examples
+/// ```
+/// use woody::error;
+/// error!("Hello, world!");
+/// ```
 #[macro_export]
 macro_rules! error {
     ($message:expr) => {
@@ -255,6 +293,11 @@ macro_rules! error {
 }
 
 /// Logs a trace message.
+/// # Examples
+/// ```
+/// use woody::trace;
+/// trace!("Hello, world!");
+/// ```
 #[macro_export]
 macro_rules! trace {
     ($message:expr) => {
@@ -268,6 +311,11 @@ macro_rules! trace {
 }
 
 /// Logs a text message.
+/// # Examples
+/// ```
+/// use woody::text;
+/// text!("Hello, world!");
+/// ```
 #[macro_export]
 macro_rules! text {
     ($message:expr) => {
@@ -281,6 +329,9 @@ macro_rules! text {
 }
 
 /// Gets the name of the current function.
+///
+/// *Note: Keeping this here so we can add as a feature later.
+#[allow(unused_macros)]
 macro_rules! function {
     () => {{
         fn f() {}
