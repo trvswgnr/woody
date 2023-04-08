@@ -1,7 +1,7 @@
 ///! A (really) very simple logger that can be used globally in any project.
 ///!
 ///! Logs the current time, the log level, the thread name, the file and line number, and the message.
-///! Log messages are written to a file (`debug.log` by default).
+///! Log messages are written to a file (`woody.log` by default).
 use lazy_static::lazy_static;
 use std::{
     env,
@@ -13,25 +13,25 @@ use std::{
 
 lazy_static! {
     static ref INSTANCE: Arc<Mutex<Option<Logger>>> = Arc::new(Mutex::new(None));
-    static ref FILENAME: Arc<Mutex<String>> = Arc::new(Mutex::new("debug.log".to_string()));
+    static ref FILENAME: Arc<Mutex<String>> = Arc::new(Mutex::new("woody.log".to_string()));
 }
 
 /// Determines the log level of a message.
 #[allow(dead_code)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
     /// Error level.
-    Error,
+    Error = 5,
     /// Warning level.
-    Warning,
+    Warning = 4,
     /// Info level.
-    Info,
+    Info = 3,
     /// Debug level.
-    Debug,
+    Debug = 2,
     /// Trace level.
-    Trace,
+    Trace = 1,
     /// Off level.
-    Off,
+    Off = 0,
 }
 
 impl std::fmt::Display for LogLevel {
@@ -77,10 +77,14 @@ fn generate_temp_file_name() -> String {
 
 /// Gets the file and filename to use for logging.
 fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
-    let filename: String;
+    let mut filename: String;
     let file: Arc<Mutex<File>>;
     if !cfg!(test) {
         filename = FILENAME.lock().unwrap().clone();
+        let env_filename = env::var("WOODY_LOG_FILE");
+        if let Ok(env_filename) = env_filename {
+            filename = env_filename;
+        }
         file = Arc::new(Mutex::new(
             OpenOptions::new()
                 .create(true)
@@ -121,7 +125,33 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
 impl Logger {
     /// Create a new logger. This is a singleton, so it can only be called once.
     fn new() -> Self {
-        let level = LogLevel::Info;
+        let mut level = LogLevel::Info;
+        let env_level = env::var("WOODY_LOG_LEVEL");
+        if let Ok(env_level) = env_level {
+            match env_level.to_lowercase().as_str() {
+                "error" => {
+                    level = LogLevel::Error;
+                }
+                "warning" => {
+                    level = LogLevel::Warning;
+                }
+                "info" => {
+                    level = LogLevel::Info;
+                }
+                "debug" => {
+                    level = LogLevel::Debug;
+                }
+                "trace" => {
+                    level = LogLevel::Trace;
+                }
+                "off" => {
+                    level = LogLevel::Off;
+                }
+                _ => {
+                    level = LogLevel::Info;
+                }
+            }
+        }
         let (file, filename) = get_file_and_filename();
 
         Self {
@@ -138,6 +168,14 @@ impl Logger {
 
     /// Log a message at the given level.
     pub fn log<W: Write>(&self, info: &LogInfo, writer: Option<&mut W>) {
+        if self.level > info.level {
+            // println!(
+            //     "not logging because self.level ({} {}) > info.level ({} {})",
+            //     self.level, self.level as u8, info.level, info.level as u8
+            // );
+            return;
+        }
+
         let now = chrono::Local::now();
         let thread = info.thread.clone().unwrap_or_else(|| {
             let thread = std::thread::current();
@@ -147,14 +185,8 @@ impl Logger {
         let location = format!("{}:{}", info.filepath, info.line_number);
         let level = info.level;
         let message = info.message.clone();
-        let output = format!(
-            "[{}] [{}] [{}] [{}] {}\n",
-            now.format("%Y-%m-%d %H:%M:%S%.3f %Z"),
-            level,
-            thread,
-            location,
-            message
-        );
+        let now_string = now.format("%Y-%m-%d %H:%M:%S%.3f %Z");
+        let output = format!("[{now_string}] [{level}] [{thread}] [{location}] {message}\n");
 
         if let Some(writer) = writer {
             writer.write_all(output.as_bytes()).unwrap();
