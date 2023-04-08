@@ -18,20 +18,20 @@ lazy_static! {
 
 /// Determines the log level of a message.
 #[allow(dead_code)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LogLevel {
     /// Error level.
-    Error = 0,
+    Error,
     /// Warning level.
-    Warning = 1,
+    Warning,
     /// Info level.
-    Info = 2,
+    Info,
     /// Debug level.
-    Debug = 3,
+    Debug,
     /// Trace level.
-    Trace = 4,
+    Trace,
     /// Off level.
-    Off = 5,
+    Off,
 }
 
 impl std::fmt::Display for LogLevel {
@@ -131,32 +131,13 @@ impl Logger {
         }
     }
 
-    pub fn get_level(&self) -> LogLevel {
-        self.level
-    }
-
     /// Set the log level. This will only log messages that are equal to or above the log level.
     pub fn set_level(&mut self, level: LogLevel) {
         self.level = level;
     }
 
-    /// Sets the filename to use for logging.
-    pub fn set_filename(&mut self, filename: &str) {
-        self.filename = filename.to_string();
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.filename)
-            .unwrap();
-        self.file = Arc::new(Mutex::new(file));
-    }
-
     /// Log a message at the given level.
     pub fn log<W: Write>(&self, info: &LogInfo, writer: Option<&mut W>) {
-        if self.level < info.level {
-            return;
-        }
-
         let now = chrono::Local::now();
         let thread = info.thread.clone().unwrap_or_else(|| {
             let thread = std::thread::current();
@@ -166,8 +147,14 @@ impl Logger {
         let location = format!("{}:{}", info.filepath, info.line_number);
         let level = info.level;
         let message = info.message.clone();
-        let datetime = now.format("%Y-%m-%d %H:%M:%S%.3f %Z");
-        let output = format!("[{datetime}] [{level}] [{thread}] [{location}] {message}\n");
+        let output = format!(
+            "[{}] [{}] [{}] [{}] {}\n",
+            now.format("%Y-%m-%d %H:%M:%S%.3f %Z"),
+            level,
+            thread,
+            location,
+            message
+        );
 
         if let Some(writer) = writer {
             writer.write_all(output.as_bytes()).unwrap();
@@ -225,7 +212,7 @@ macro_rules! log {
         let message = $message.to_string();
         let logger = $crate::Logger::get_instance();
         let info = $crate::LogInfo {
-            level: $crate::LogLevel::Debug,
+            level: $crate::LogLevel::Info,
             message,
             filepath: file!(),
             line_number: line!(),
@@ -355,22 +342,6 @@ macro_rules! log_text {
     ($message:expr, $($arg:tt)*) => {
         let message = format!($message, $($arg)*).to_string();
         $crate::log!($crate::LogLevel::Off, message);
-    };
-}
-
-/// Configures the logger.
-/// # Examples
-/// ```
-/// use woody::{configure_logger, LogLevel};
-/// configure_logger!(LogLevel::Info, "my_log_file.log");
-/// assert_eq!(woody::Logger::get_instance().get_level(), LogLevel::Info);
-/// ```
-#[macro_export]
-macro_rules! configure_logger {
-    ($level:expr, $file:expr) => {
-        let mut logger = $crate::Logger::get_instance();
-        logger.set_level($level);
-        logger.set_filename($file);
     };
 }
 
