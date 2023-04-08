@@ -95,8 +95,16 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
                 .open(&filename)
                 .unwrap(),
         ));
+        // let verbose = env::var("WOODY_VERBOSE");
         // let full_path = std::fs::canonicalize(&filename).unwrap();
-        // println!("Logging to {}", full_path.to_str().unwrap());
+        // if let Ok(verbose) = verbose {
+        //     let v = verbose.trim().to_lowercase();
+        //     if v != "false" || v != "0" {
+        //         println!("Logging to {}", full_path.to_str().unwrap());
+        //     }
+        // } else {
+        //     println!("Logging to {}", full_path.to_str().unwrap());
+        // }
     } else {
         // println!("Logging to a temp file");
         // create a temp file using the std library
