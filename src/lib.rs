@@ -408,7 +408,7 @@ mod tests {
         let logger = Logger::get_instance();
         let current_global_instance = get_global_instance();
         assert!(current_global_instance.is_some());
-        assert_eq!(logger.level, LogLevel::Info);
+        assert_eq!(logger.level, LogLevel::ALL);
     }
 
     /// Check that writing to the logger works.
