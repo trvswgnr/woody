@@ -2,6 +2,12 @@
 name = "woody"
 version = "0.1.0"
 edition = "2021"
+author = ["Travis Aaron Wagner <dev@travisaw.com>"]
+license = "MIT"
+description = "A logger for Rust that's *actually* easy to use."
+readme = "README.md"
+keywords = ["log", "logger", "logging", "wood"]
+repository = "https://github.com/trvswgnr/woody"
 
 [dependencies]
 lazy_static = "1.4.0"
