@@ -24,14 +24,16 @@ pub enum LogLevel {
     Error = 5,
     /// Warning level.
     Warning = 4,
-    /// Info level.
-    Info = 3,
     /// Debug level.
-    Debug = 2,
+    Debug = 3,
+    /// Info level.
+    Info = 2,
     /// Trace level.
     Trace = 1,
     /// Off level.
     Off = 0,
+    /// ! Internal use only. Do not use.
+    ALL = -1,
 }
 
 impl std::fmt::Display for LogLevel {
@@ -43,6 +45,7 @@ impl std::fmt::Display for LogLevel {
             LogLevel::Error => write!(f, "ERROR"),
             LogLevel::Trace => write!(f, "TRACE"),
             LogLevel::Off => write!(f, "OFF"),
+            LogLevel::ALL => write!(f, ""),
         }
     }
 }
@@ -125,33 +128,20 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
 impl Logger {
     /// Create a new logger. This is a singleton, so it can only be called once.
     fn new() -> Self {
-        let mut level = LogLevel::Info;
         let env_level = env::var("WOODY_LEVEL");
-        if let Ok(env_level) = env_level {
-            match env_level.to_lowercase().as_str() {
-                "error" => {
-                    level = LogLevel::Error;
-                }
-                "warning" | "warn" => {
-                    level = LogLevel::Warning;
-                }
-                "info" => {
-                    level = LogLevel::Info;
-                }
-                "debug" => {
-                    level = LogLevel::Debug;
-                }
-                "trace" => {
-                    level = LogLevel::Trace;
-                }
-                "off" => {
-                    level = LogLevel::Off;
-                }
-                _ => {
-                    level = LogLevel::Info;
-                }
-            }
-        }
+        let level = match env_level {
+            Ok(x) => match x.to_lowercase().as_str() {
+                "error" | "5" => LogLevel::Error,
+                "warning" | "warn" | "4" => LogLevel::Warning,
+                "debug" | "3" => LogLevel::Debug,
+                "info" | "2" => LogLevel::Info,
+                "trace" | "1" => LogLevel::Trace,
+                "off" | "0" => LogLevel::Off,
+                _ => LogLevel::ALL,
+            },
+            Err(_) => LogLevel::ALL,
+        };
+
         let (file, filename) = get_file_and_filename();
 
         Self {
@@ -168,7 +158,7 @@ impl Logger {
 
     /// Log a message at the given level.
     pub fn log<W: Write>(&self, info: &LogInfo, writer: Option<&mut W>) {
-        if self.level > info.level {
+        if self.level > info.level || self.level == LogLevel::Off {
             // println!(
             //     "not logging because self.level ({} {}) > info.level ({} {})",
             //     self.level, self.level as u8, info.level, info.level as u8
@@ -448,7 +438,7 @@ mod tests {
     fn check_log_file_contains(s: String) {
         // open the file and check that it contains the message
         let logger = Logger::get_instance();
-        let filename = logger.clone().filename;
+        let filename = &logger.filename;
         let mut file = OpenOptions::new().read(true).open(filename).unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
