@@ -20,25 +20,26 @@ Add this to your `Cargo.toml`:
 woody = { git = "https://github.com/trvswgnr/woody.git" }
 ```
 
-Then, add this to your crate root:
+## Examples
 
 ```rust
 use woody::*;
-```
 
-## Examples
-
-### Basic
-
-```rust
 fn main() {
-    log!(Info, "An info message.");
-    debug!("A debug message.");
-    info!("An info message.");
-    warn!("A warning message.");
-    error!("An error message.");
-    trace!("A trace message.");
+    log!(LogLevel::Info, "An info message.");
+    log_debug!("A debug message.");
+    log_info!("An info message.");
+    log_warn!("A warning message.");
+    log_error!("An error message.");
+    log_trace!("A trace message.");
 }
 ```
 
-Logs are output to the `debug.log` file in the current directory.
+Logs are output to the `woody.log` file in the current directory.
+
+Environment variables can be set to control the log level and output file:
+
+```bash
+$ WOODY_LEVEL=error cargo run # Only error messages will be logged
+$ WOODY_FILE=woodyrulez.log cargo run # Logs will be written to woodyrulez.log
+```

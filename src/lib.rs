@@ -81,7 +81,7 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
     let file: Arc<Mutex<File>>;
     if !cfg!(test) {
         filename = FILENAME.lock().unwrap().clone();
-        let env_filename = env::var("WOODY_LOG_FILE");
+        let env_filename = env::var("WOODY_FILE");
         if let Ok(env_filename) = env_filename {
             filename = env_filename;
         }
@@ -126,13 +126,13 @@ impl Logger {
     /// Create a new logger. This is a singleton, so it can only be called once.
     fn new() -> Self {
         let mut level = LogLevel::Info;
-        let env_level = env::var("WOODY_LOG_LEVEL");
+        let env_level = env::var("WOODY_LEVEL");
         if let Ok(env_level) = env_level {
             match env_level.to_lowercase().as_str() {
                 "error" => {
                     level = LogLevel::Error;
                 }
-                "warning" => {
+                "warning" | "warn" => {
                     level = LogLevel::Warning;
                 }
                 "info" => {
