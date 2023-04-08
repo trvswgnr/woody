@@ -18,20 +18,20 @@ lazy_static! {
 
 /// Determines the log level of a message.
 #[allow(dead_code)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub enum LogLevel {
     /// Error level.
-    Error,
+    Error = 0,
     /// Warning level.
-    Warning,
+    Warning = 1,
     /// Info level.
-    Info,
+    Info = 2,
     /// Debug level.
-    Debug,
+    Debug = 3,
     /// Trace level.
-    Trace,
+    Trace = 4,
     /// Off level.
-    Off,
+    Off = 5,
 }
 
 impl std::fmt::Display for LogLevel {
@@ -88,7 +88,7 @@ fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
                 .open(&filename)
                 .unwrap(),
         ));
-        let full_path = std::fs::canonicalize(&filename).unwrap();
+        // let full_path = std::fs::canonicalize(&filename).unwrap();
         // println!("Logging to {}", full_path.to_str().unwrap());
     } else {
         // println!("Logging to a temp file");
@@ -131,13 +131,32 @@ impl Logger {
         }
     }
 
+    pub fn get_level(&self) -> LogLevel {
+        self.level
+    }
+
     /// Set the log level. This will only log messages that are equal to or above the log level.
     pub fn set_level(&mut self, level: LogLevel) {
         self.level = level;
     }
 
+    /// Sets the filename to use for logging.
+    pub fn set_filename(&mut self, filename: &str) {
+        self.filename = filename.to_string();
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.filename)
+            .unwrap();
+        self.file = Arc::new(Mutex::new(file));
+    }
+
     /// Log a message at the given level.
     pub fn log<W: Write>(&self, info: &LogInfo, writer: Option<&mut W>) {
+        if self.level < info.level {
+            return;
+        }
+
         let now = chrono::Local::now();
         let thread = info.thread.clone().unwrap_or_else(|| {
             let thread = std::thread::current();
@@ -147,14 +166,8 @@ impl Logger {
         let location = format!("{}:{}", info.filepath, info.line_number);
         let level = info.level;
         let message = info.message.clone();
-        let output = format!(
-            "[{}] [{}] [{}] [{}] {}\n",
-            now.format("%Y-%m-%d %H:%M:%S%.3f %Z"),
-            level,
-            thread,
-            location,
-            message
-        );
+        let datetime = now.format("%Y-%m-%d %H:%M:%S%.3f %Z");
+        let output = format!("[{datetime}] [{level}] [{thread}] [{location}] {message}\n");
 
         if let Some(writer) = writer {
             writer.write_all(output.as_bytes()).unwrap();
@@ -204,9 +217,23 @@ pub struct LogInfo {
 /// use woody::log;
 /// use woody::LogLevel;
 /// log!(LogLevel::Info, "Hello, world!");
+/// log!("Hello, world!");
 /// ```
 #[macro_export]
 macro_rules! log {
+    ($message:expr) => {
+        let message = $message.to_string();
+        let logger = $crate::Logger::get_instance();
+        let info = $crate::LogInfo {
+            level: $crate::LogLevel::Debug,
+            message,
+            filepath: file!(),
+            line_number: line!(),
+            thread: None,
+        };
+        let writer: Option<&mut Vec<u8>> = None;
+        logger.log(&info, writer);
+    };
     ($level:expr, $message:expr) => {
         let message = $message.to_string();
         let logger = $crate::Logger::get_instance();
@@ -328,6 +355,22 @@ macro_rules! log_text {
     ($message:expr, $($arg:tt)*) => {
         let message = format!($message, $($arg)*).to_string();
         $crate::log!($crate::LogLevel::Off, message);
+    };
+}
+
+/// Configures the logger.
+/// # Examples
+/// ```
+/// use woody::{configure_logger, LogLevel};
+/// configure_logger!(LogLevel::Info, "my_log_file.log");
+/// assert_eq!(woody::Logger::get_instance().get_level(), LogLevel::Info);
+/// ```
+#[macro_export]
+macro_rules! configure_logger {
+    ($level:expr, $file:expr) => {
+        let mut logger = $crate::Logger::get_instance();
+        logger.set_level($level);
+        logger.set_filename($file);
     };
 }
 
