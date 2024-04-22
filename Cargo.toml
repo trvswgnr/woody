@@ -1,8 +1,8 @@
 [package]
 name = "woody"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
-author = ["Travis Aaron Wagner <dev@travisaw.com>"]
+authors = ["Travis Aaron Wagner <dev@travisaw.com>"]
 license = "MIT"
 description = "A logger for Rust that's *actually* easy to use."
 readme = "README.md"
