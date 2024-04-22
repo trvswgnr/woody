@@ -6,10 +6,12 @@ use lazy_static::lazy_static;
 use std::{
     env,
     fs::{File, OpenOptions},
-    hash::{Hash, Hasher},
     io::Write,
     sync::{Arc, Mutex},
 };
+
+#[cfg(test)]
+use std::hash::{Hash, Hasher};
 
 const DEFAULT_LOG_FILE: &str = "woody.log";
 
@@ -65,6 +67,7 @@ pub struct Logger {
 ///
 /// Returns a string that looks like this:
 /// `temp-8444741687653642537.log`
+#[cfg(test)]
 fn generate_temp_file_name() -> String {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     let now = chrono::Local::now();
