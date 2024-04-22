@@ -11,9 +11,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+const DEFAULT_LOG_FILE: &str = "woody.log";
+
 lazy_static! {
     static ref INSTANCE: Arc<Mutex<Option<Logger>>> = Arc::new(Mutex::new(None));
-    static ref FILENAME: Arc<Mutex<String>> = Arc::new(Mutex::new("woody.log".to_string()));
+    static ref FILENAME: Arc<Mutex<String>> = Arc::new(Mutex::new(DEFAULT_LOG_FILE.to_string()));
 }
 
 /// Determines the log level of a message.
@@ -78,57 +80,43 @@ fn generate_temp_file_name() -> String {
     format!("temp-{hash}.log")
 }
 
-/// Gets the file and filename to use for logging.
+#[cfg(not(test))]
 fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
     let mut filename: String;
     let file: Arc<Mutex<File>>;
-    if !cfg!(test) {
-        filename = FILENAME.lock().unwrap().clone();
-        let env_filename = env::var("WOODY_FILE");
-        if let Ok(env_filename) = env_filename {
-            filename = env_filename;
-        }
-        file = Arc::new(Mutex::new(
-            OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&filename)
-                .unwrap(),
-        ));
-        // let verbose = env::var("WOODY_VERBOSE");
-        // let full_path = std::fs::canonicalize(&filename).unwrap();
-        // if let Ok(verbose) = verbose {
-        //     let v = verbose.trim().to_lowercase();
-        //     if v != "false" || v != "0" {
-        //         println!("Logging to {}", full_path.to_str().unwrap());
-        //     }
-        // } else {
-        //     println!("Logging to {}", full_path.to_str().unwrap());
-        // }
-    } else {
-        // println!("Logging to a temp file");
-        // create a temp file using the std library
-        let temp_dir = env::temp_dir();
-        // append "logger" to the temp dir so it's like this:
-        // /tmp/logger/temp-af44fa0-1f2c-4b5a-9c1f-7f8e9d0a1b2c.log
-        let temp_dir = temp_dir.join("logger");
-        // remove the temp dir if it already exists
-        if temp_dir.exists() {
-            std::fs::remove_dir_all(&temp_dir).unwrap();
-        }
-        std::fs::create_dir(&temp_dir).unwrap();
-        let temp_file_name = generate_temp_file_name();
-        let temp_file_path = temp_dir.join(temp_file_name);
-        filename = temp_file_path.to_str().unwrap().to_string();
-
-        file = Arc::new(Mutex::new(
-            OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(temp_file_path)
-                .unwrap(),
-        ));
+    filename = FILENAME.lock().unwrap().clone();
+    let env_filename = env::var("WOODY_FILE");
+    if let Ok(env_filename) = env_filename {
+        filename = env_filename;
     }
+    let f = OpenOptions::new().create(true).append(true).open(&filename);
+    file = Arc::new(Mutex::new(f.unwrap()));
+    return (file, filename);
+}
+
+/// Gets the file and filename to use for logging.
+#[cfg(test)]
+fn get_file_and_filename() -> (Arc<Mutex<File>>, String) {
+    let filename: String;
+    let file: Arc<Mutex<File>>;
+    let temp_dir_base = env::temp_dir();
+    // append "logger" to the temp dir so it's like this:
+    // /tmp/logger/temp-af44fa0-1f2c-4b5a-9c1f-7f8e9d0a1b2c.log
+    let temp_dir = temp_dir_base.join("logger");
+    // remove the temp dir if it already exists
+    if temp_dir.exists() {
+        std::fs::remove_dir_all(&temp_dir).unwrap();
+    }
+    std::fs::create_dir(&temp_dir).unwrap();
+    let temp_file_name = generate_temp_file_name();
+    let temp_file_path = temp_dir.join(temp_file_name);
+    filename = temp_file_path.to_str().unwrap().to_string();
+
+    let f = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(temp_file_path);
+    file = Arc::new(Mutex::new(f.unwrap()));
 
     (file, filename)
 }
@@ -398,6 +386,28 @@ mod tests {
 
     use super::*;
 
+    async fn write_to_logger(id: Option<u8>) {
+        let logger = Logger::get_instance();
+        let thread = std::thread::current();
+        let thread = thread.name();
+        let thread = match id {
+            Some(id) => format!("{}-{}", thread.unwrap(), id),
+            None => thread.unwrap().to_string(),
+        };
+        let id = id.unwrap_or(0);
+        let message = format!("Hello, world! {id}");
+        let info = LogInfo {
+            level: LogLevel::Info,
+            message,
+            filepath: file!(),
+            line_number: line!(),
+            thread: Some(thread),
+        };
+
+        let writer: Option<&mut Vec<u8>> = None;
+        logger.log(&info, writer);
+    }
+
     /// Get the global instance of the Logger (or None if it doesn't exist).
     fn get_global_instance() -> Option<Logger> {
         let current_global_instance = INSTANCE.clone();
@@ -447,9 +457,12 @@ mod tests {
         // open the file and check that it contains the message
         let logger = Logger::get_instance();
         let filename = &logger.filename;
-        let mut file = OpenOptions::new().read(true).open(filename).unwrap();
+        let file = OpenOptions::new().read(true).open(filename);
+        if file.is_err() {
+            panic!("Could not open {}: {:?}", filename, file.unwrap_err());
+        }
         let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
+        file.unwrap().read_to_string(&mut contents).unwrap();
         assert!(
             contents.contains(s.as_str()),
             "Contents of log does not contain '{s}'\nContents: {contents}\nLogger: {logger:?}"
@@ -459,28 +472,6 @@ mod tests {
     /// Check that writing to the logger across multiple threads works.
     #[test]
     fn test_writing_to_logger_across_threads() {
-        async fn write_to_logger(id: Option<u8>) {
-            let logger = Logger::get_instance();
-            let thread = std::thread::current();
-            let thread = thread.name();
-            let thread = match id {
-                Some(id) => format!("{}-{}", thread.unwrap(), id),
-                None => thread.unwrap().to_string(),
-            };
-            let id = id.unwrap_or(0);
-            let message = format!("Hello, world! {id}");
-            let info = LogInfo {
-                level: LogLevel::Info,
-                message,
-                filepath: file!(),
-                line_number: line!(),
-                thread: Some(thread),
-            };
-
-            let writer: Option<&mut Vec<u8>> = None;
-            logger.log(&info, writer);
-        }
-
         async fn spawn_logs() {
             let mut handles = Vec::new();
             for i in 0..10 {
@@ -496,8 +487,8 @@ mod tests {
         let rt = Runtime::new().unwrap();
         rt.block_on(spawn_logs());
 
-        let filename = FILENAME.lock().unwrap().clone();
-        let mut file = OpenOptions::new().read(true).open(filename).unwrap();
+        let filename = Logger::get_instance().filename;
+        let mut file = OpenOptions::new().read(true).open(&filename).unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 
