@@ -17,7 +17,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-woody = { git = "https://github.com/trvswgnr/woody.git" }
+woody = "0.1.1"
 ```
 
 ## Examples
