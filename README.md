@@ -43,3 +43,14 @@ Environment variables can be set to control the log level and output file:
 $ WOODY_LEVEL=error cargo run # Only error messages will be logged
 $ WOODY_FILE=woodyrulez.log cargo run # Logs will be written to woodyrulez.log
 ```
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to
+discuss what you would like to change.
+
+> [!IMPORTANT]  
+> When running tests, make sure to remove the `woody.log` file in the current directory after each test run.
+> ```shell
+> cargo test && rm ./woody.log
+> ```
