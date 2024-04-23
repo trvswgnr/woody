@@ -17,7 +17,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-woody = "0.1.1"
+woody = "0.1.2"
 ```
 
 ## Examples

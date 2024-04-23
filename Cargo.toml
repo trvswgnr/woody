@@ -1,6 +1,6 @@
 [package]
 name = "woody"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Travis Aaron Wagner <dev@techsavvytravvy.com>"]
 license = "MIT"
