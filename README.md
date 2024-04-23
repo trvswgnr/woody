@@ -54,3 +54,13 @@ discuss what you would like to change.
 > ```shell
 > cargo test && rm ./woody.log
 > ```
+
+To publish a new version, update the version number in `Cargo.toml` and in `README.md`, and then run:
+
+```shell
+cargo publish
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
