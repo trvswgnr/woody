@@ -1,6 +1,6 @@
 # Woody
 
-A logger for Rust that's \*actually\* easy to use.
+A file logger for Rust that's \*actually\* easy to use.
 
 ## Features
 
